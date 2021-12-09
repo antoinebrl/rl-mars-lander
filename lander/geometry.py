@@ -8,6 +8,37 @@ def l2dist(x, y):
     return np.linalg.norm(x - y, ord=2)
 
 
+def ccw(x, y, z):
+    """
+    Counterclockwise angle formed by [x, y] and [x, z]
+    Taken from https://stackoverflow.com/a/9997374
+    """
+    return (z[1] - x[1]) * (y[0] - x[0]) > (y[1] - x[1]) * (z[0] - x[0])
+
+
+def segment_intersect(A, B, C, D):
+    """
+    Check if two segments, [A, B] and [C, D], intersect each other.
+    Taken from # https://stackoverflow.com/a/9997374
+    """
+    return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
+
+
+def is_inside_polygon(polygon, x:int, y:int, y2:int=0):
+    """
+    Check if a point is inside the area of a polygon. The is inspired by surface
+    https://www.geeksforgeeks.org/how-to-check-if-a-given-point-lies-inside-a-polygon/
+    but with a line shooting vertically.
+    """
+    pos = [x, y]
+    top = [x, y2]
+    nb_intersection = 0
+    for start, end in zip(polygon, polygon[1:]):
+        if segment_intersect(start, end, pos, top):
+            nb_intersection += 1
+    return nb_intersection % 2
+
+
 def find_flat_segment(polygon):
     """
     Find beginning and end indexes of a horizontal section in the polygon.
