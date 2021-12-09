@@ -1,2 +1,2 @@
-numpy
 gym>=0.17,<0.20
+numpy

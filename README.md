@@ -13,6 +13,15 @@ a remote device or an online notebook (Google Colab, etc)
 python lander/environment.py 
 ```
 
+# Contributing
+
+## Coding style
+
+```shell
+pip install pre-commit
+pre-commit install
+```
+
 ## Tests
 
 ```shell

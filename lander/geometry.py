@@ -24,7 +24,7 @@ def segment_intersect(A, B, C, D):
     return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
 
 
-def is_inside_polygon(polygon, x:int, y:int, y2:int=0):
+def is_inside_polygon(polygon, x: int, y: int, y2: int = 0):
     """
     Check if a point is inside the area of a polygon. The is inspired by surface
     https://www.geeksforgeeks.org/how-to-check-if-a-given-point-lies-inside-a-polygon/
@@ -56,7 +56,7 @@ def find_flat_segment(polygon):
     return [start, end]
 
 
-def convert_to_fixed_length_polygon(polygon, n:int):
+def convert_to_fixed_length_polygon(polygon, n: int):
     """
     Represent a polygon with a certain number of nodes by breaking down the longest segments.
     The polygon is a list or nd.array of 2D coordinates (x, y)
@@ -67,14 +67,10 @@ def convert_to_fixed_length_polygon(polygon, n:int):
         index_longest = np.argmax([l2dist(x, y) for x, y in zip(polygon, polygon[1:])])
         intermediate_point = [
             (polygon[index_longest][0] + polygon[index_longest + 1][0]) / 2,
-            (polygon[index_longest][1] + polygon[index_longest + 1][1]) / 2
+            (polygon[index_longest][1] + polygon[index_longest + 1][1]) / 2,
         ]
         if isinstance(polygon, list):
             polygon.insert(index_longest + 1, intermediate_point)
         else:
             polygon = np.insert(polygon, index_longest + 1, intermediate_point, 0)
     return polygon
-
-
-
-

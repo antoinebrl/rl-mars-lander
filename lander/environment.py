@@ -1,9 +1,9 @@
 import math
 
 import gym
-from gym import spaces
 import numpy as np
 import pyglet
+from gym import spaces
 from pyglet.gl import *
 
 from lander.geometry import convert_to_fixed_length_polygon, find_flat_segment, is_inside_polygon
@@ -18,8 +18,18 @@ TEST_CASES_CG = [
     },
     {
         # Initial speed, correct side
-        "ground": [[0, 100], [1000, 500], [1500, 100], [3000, 100], [3500, 500], [3700, 200], [5000, 1500], [5800, 300],
-                   [6000, 1000], [6999, 2000]],
+        "ground": [
+            [0, 100],
+            [1000, 500],
+            [1500, 100],
+            [3000, 100],
+            [3500, 500],
+            [3700, 200],
+            [5000, 1500],
+            [5800, 300],
+            [6000, 1000],
+            [6999, 2000],
+        ],
         "rover": [6500, 2800, -100, 0, 600, 90, 0],
     },
     {
@@ -29,16 +39,54 @@ TEST_CASES_CG = [
     },
     {
         # Deep canyon
-        "ground": [[0, 1000], [300, 1500], [350, 1400], [500, 2000], [800, 1800], [1000, 2500], [1200, 2100],
-                   [1500, 2400], [2000, 1000], [2200, 500], [2500, 100], [2900, 800], [3000, 500], [3200, 1000],
-                   [3500, 2000], [3800, 800], [4000, 200], [5000, 200], [5500, 1500], [6999, 2800]],
+        "ground": [
+            [0, 1000],
+            [300, 1500],
+            [350, 1400],
+            [500, 2000],
+            [800, 1800],
+            [1000, 2500],
+            [1200, 2100],
+            [1500, 2400],
+            [2000, 1000],
+            [2200, 500],
+            [2500, 100],
+            [2900, 800],
+            [3000, 500],
+            [3200, 1000],
+            [3500, 2000],
+            [3800, 800],
+            [4000, 200],
+            [5000, 200],
+            [5500, 1500],
+            [6999, 2800],
+        ],
         "rover": [500, 2700, 100, 0, 800, -90, 0],
     },
     {
         # Deep canyon
-        "ground": [[0, 1000], [300, 1500], [350, 1400], [500, 2100], [1500, 2100], [2000, 200], [2500, 500],
-                   [2900, 300], [3000, 200], [3200, 1000], [3500, 500], [3800, 800], [4000, 200], [4200, 800],
-                   [4800, 600], [5000, 1200], [5500, 900], [6000, 500], [6500, 300], [6999, 500]],
+        "ground": [
+            [0, 1000],
+            [300, 1500],
+            [350, 1400],
+            [500, 2100],
+            [1500, 2100],
+            [2000, 200],
+            [2500, 500],
+            [2900, 300],
+            [3000, 200],
+            [3200, 1000],
+            [3500, 500],
+            [3800, 800],
+            [4000, 200],
+            [4200, 800],
+            [4800, 600],
+            [5000, 1200],
+            [5500, 900],
+            [6000, 500],
+            [6500, 300],
+            [6999, 500],
+        ],
         "rover": [6500, 2700, -50, 0, 1000, 90, 0],
     },
 ]
@@ -76,19 +124,16 @@ class MarsLanderEnv(gym.Env):
     #       content of the tank: 0 <= fuel <= 2000
     #       tilt angle to vertical (in degrees): -90 <= angle <= 90
     #       current thrust: 0 <= power <= 4
-    observation_space = spaces.Dict({
-        "ground": spaces.Box(
-            low=0,
-            high=max(SCENE_WIDTH, SCENE_HEIGHT),
-            shape=(30, 2),
-            dtype=np.float32
-        ),
-        "rover": spaces.Box(
-            low=np.array([0, 0, -500, -500, 0, ROT_MIN, 0]),
-            high=np.array([SCENE_WIDTH, SCENE_HEIGHT, 500, 500, 2000, ROT_MAX, 4]),
-            dtype=np.float32
-        )
-    })
+    observation_space = spaces.Dict(
+        {
+            "ground": spaces.Box(low=0, high=max(SCENE_WIDTH, SCENE_HEIGHT), shape=(30, 2), dtype=np.float32),
+            "rover": spaces.Box(
+                low=np.array([0, 0, -500, -500, 0, ROT_MIN, 0]),
+                high=np.array([SCENE_WIDTH, SCENE_HEIGHT, 500, 500, 2000, ROT_MAX, 4]),
+                dtype=np.float32,
+            ),
+        }
+    )
 
     def __init__(self, rover=None, ground=None):
         super().__init__()
@@ -123,7 +168,6 @@ class MarsLanderEnv(gym.Env):
         # Update rotation.  Value of the previous turn +/-15°.
         self.rover.angle += np.rint(angle)
         self.rover.angle = np.clip(self.rover.angle, -90, 90)
-
 
         # Adjust engine power. Value of the previous turn +/-1.
         self.rover.power += np.rint(trust)
@@ -160,7 +204,7 @@ class MarsLanderEnv(gym.Env):
         assert -1 <= trust <= 1
 
         angle = np.rint(angle * 15)
-        trust = -1 if trust < -1/3 else 0 if trust < 1/3 else 1
+        trust = -1 if trust < -1 / 3 else 0 if trust < 1 / 3 else 1
         self.update_state(angle, trust)
 
         if not self.rover.is_within_bounds(width=self.SCENE_WIDTH, height=self.SCENE_HEIGHT):
@@ -199,34 +243,28 @@ class MarsLanderEnv(gym.Env):
                 x=50,
                 y=self.SCENE_HEIGHT // scale - 50,
                 width=4000,
-                anchor_x='left',
-                anchor_y='top',
+                anchor_x="left",
+                anchor_y="top",
                 font_name="Monospace",
                 font_size=64 // scale,
                 color=(255, 255, 255, 255),
-                multiline=True
+                multiline=True,
             )
 
         # background
-        self.viewer.draw_polygon([
-            [0, 0],
-            [self.SCENE_WIDTH, 0],
-            [self.SCENE_WIDTH, self.SCENE_HEIGHT],
-            [0, self.SCENE_HEIGHT]
-        ],
-            color=(0.2, 0.2, 0.2)
+        self.viewer.draw_polygon(
+            [[0, 0], [self.SCENE_WIDTH, 0], [self.SCENE_WIDTH, self.SCENE_HEIGHT], [0, self.SCENE_HEIGHT]],
+            color=(0.2, 0.2, 0.2),
         )
         # Surface line
         self.viewer.draw_polyline(self.ground.astype(int), linewidth=2, color=(0.7, 0, 0))
 
         # Rover
         size = 100
-        rover = self.viewer.draw_polygon(np.array([
-            [- size, - size],
-            [+ size, - size],
-            [+ size // 2, + size],
-            [- size // 2, + size]
-        ], dtype=int), color=(0.9, 0, 0))
+        rover = self.viewer.draw_polygon(
+            np.array([[-size, -size], [+size, -size], [+size // 2, +size], [-size // 2, +size]], dtype=int),
+            color=(0.9, 0, 0),
+        )
 
         rover.add_attr(self.rovertrans)
 
@@ -266,7 +304,7 @@ class MarsLanderEnv(gym.Env):
 
             # smooth land
             for i in range(1, nb_point - 1):
-                ground[i, 1] = ground[(i - 1):(i + 1), 1].sum() / 3
+                ground[i, 1] = ground[(i - 1) : (i + 1), 1].sum() / 3
 
             landing_area[0] = np.random.randint(1, nb_point - 3)
 
@@ -327,8 +365,10 @@ class MarsLanderEnv(gym.Env):
         # Ensure large landing area
         ground[landing_area[0] + 1, 1] = ground[landing_area[0], 1]
         i = 1
-        while landing_area[0] + i < len(ground) - 1 \
-                and ground[landing_area[0] + i, 0] - ground[landing_area[0], 0] <= 1000:
+        while (
+            landing_area[0] + i < len(ground) - 1
+            and ground[landing_area[0] + i, 0] - ground[landing_area[0], 0] <= 1000
+        ):
             ground[landing_area[0] + i, 1] = ground[landing_area[0], 1]
             i += 1
         ground[landing_area[0] + i, 1] = ground[landing_area[0], 1]
@@ -348,8 +388,9 @@ class MarsLanderEnv(gym.Env):
             self.viewer = None
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import time
+
     from gym.utils.env_checker import check_env
 
     env = MarsLanderEnv()
