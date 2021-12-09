@@ -3,6 +3,8 @@ import math
 import gym
 from gym import spaces
 import numpy as np
+import pyglet
+from pyglet.gl import *
 
 from lander.geometry import convert_to_fixed_length_polygon, find_flat_segment, is_inside_polygon
 from lander.rover_state import RoverState
@@ -181,6 +183,72 @@ class MarsLanderEnv(gym.Env):
         observation = {"ground": self.ground, "rover": self.rover.numpy()}
         return observation, reward, done, info
 
+    def render(self, mode="human", scale=4):
+        if mode != "human":
+            raise ValueError(f"{mode} is not a valid render mode. Only 'human' is supported.")
+        if self.viewer is None:
+            from gym.envs.classic_control import rendering
+
+            self.viewer = rendering.Viewer(self.SCENE_WIDTH // scale, self.SCENE_HEIGHT // scale)
+            self.viewer.set_bounds(0, self.SCENE_WIDTH, 0, self.SCENE_HEIGHT)
+
+            self.rovertrans = rendering.Transform()
+
+            self.label = pyglet.text.Label(
+                "",
+                x=50,
+                y=self.SCENE_HEIGHT // scale - 50,
+                width=4000,
+                anchor_x='left',
+                anchor_y='top',
+                font_name="Monospace",
+                font_size=64 // scale,
+                color=(255, 255, 255, 255),
+                multiline=True
+            )
+
+        # background
+        self.viewer.draw_polygon([
+            [0, 0],
+            [self.SCENE_WIDTH, 0],
+            [self.SCENE_WIDTH, self.SCENE_HEIGHT],
+            [0, self.SCENE_HEIGHT]
+        ],
+            color=(0.2, 0.2, 0.2)
+        )
+        # Surface line
+        self.viewer.draw_polyline(self.ground.astype(int), linewidth=2, color=(0.7, 0, 0))
+
+        # Rover
+        size = 100
+        rover = self.viewer.draw_polygon(np.array([
+            [- size, - size],
+            [+ size, - size],
+            [+ size // 2, + size],
+            [- size // 2, + size]
+        ], dtype=int), color=(0.9, 0, 0))
+
+        rover.add_attr(self.rovertrans)
+
+        self.rovertrans.set_translation(self.rover.x, self.rover.y)
+        self.rovertrans.set_rotation(math.radians(self.rover.angle))
+
+        # Text
+        self.label.text = repr(self.rover)
+
+        # Update render
+        self.viewer.window.switch_to()
+        self.viewer.window.dispatch_events()
+        self.viewer.transform.enable()
+        for geom in self.viewer.geoms:
+            geom.render()
+        for geom in self.viewer.onetime_geoms:
+            geom.render()
+        self.viewer.transform.disable()
+        self.label.draw()
+        self.viewer.onetime_geoms = []
+        self.viewer.window.flip()
+        return
 
     def reset(self):
         landing_area = [0, 0]
@@ -278,3 +346,22 @@ class MarsLanderEnv(gym.Env):
         if self.viewer:
             self.viewer.close()
             self.viewer = None
+
+
+if __name__ == '__main__':
+    import time
+    from gym.utils.env_checker import check_env
+
+    env = MarsLanderEnv()
+    env.reset()
+    check_env(env, warn=True, skip_render_check=True)
+
+    for i in range(100):
+        action = env.action_space.sample()
+        state, reward, done, info = env.step(action)
+        env.render()
+        if done:
+            break
+        time.sleep(0.050)
+
+    env.close()
