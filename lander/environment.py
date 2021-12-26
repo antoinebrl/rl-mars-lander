@@ -9,87 +9,87 @@ from pyglet.gl import *
 from lander.geometry import convert_to_fixed_length_polygon, find_flat_segment, is_inside_polygon
 from lander.rover_state import RoverState
 
-TEST_CASES_CG = [
+TEST_CASES_CG = (
     # Episode II
     {
         # Easy on the right
-        "ground": [[0, 100], [1000, 500], [1500, 1500], [3000, 1000], [4000, 150], [5500, 150], [6999, 800]],
-        "rover": [2500, 2700, 0, 0, 550, 0, 0],
+        "ground": ((0, 100), (1000, 500), (1500, 1500), (3000, 1000), (4000, 150), (5500, 150), (6999, 800)),
+        "rover": (2500, 2700, 0, 0, 550, 0, 0),
     },
     {
         # Initial speed, correct side
-        "ground": [
-            [0, 100],
-            [1000, 500],
-            [1500, 100],
-            [3000, 100],
-            [3500, 500],
-            [3700, 200],
-            [5000, 1500],
-            [5800, 300],
-            [6000, 1000],
-            [6999, 2000],
-        ],
-        "rover": [6500, 2800, -100, 0, 600, 90, 0],
+        "ground": (
+            (0, 100),
+            (1000, 500),
+            (1500, 100),
+            (3000, 100),
+            (3500, 500),
+            (3700, 200),
+            (5000, 1500),
+            (5800, 300),
+            (6000, 1000),
+            (6999, 2000),
+        ),
+        "rover": (6500, 2800, -100, 0, 600, 90, 0),
     },
     {
         # Initial speed, wrong side
-        "ground": [[0, 100], [1000, 500], [1500, 1500], [3000, 1000], [4000, 150], [5500, 150], [6999, 800]],
-        "rover": [6500, 2800, -90, 0, 750, 90, 0],
+        "ground": ((0, 100), (1000, 500), (1500, 1500), (3000, 1000), (4000, 150), (5500, 150), (6999, 800)),
+        "rover": (6500, 2800, -90, 0, 750, 90, 0),
     },
     {
         # Deep canyon
-        "ground": [
-            [0, 1000],
-            [300, 1500],
-            [350, 1400],
-            [500, 2000],
-            [800, 1800],
-            [1000, 2500],
-            [1200, 2100],
-            [1500, 2400],
-            [2000, 1000],
-            [2200, 500],
-            [2500, 100],
-            [2900, 800],
-            [3000, 500],
-            [3200, 1000],
-            [3500, 2000],
-            [3800, 800],
-            [4000, 200],
-            [5000, 200],
-            [5500, 1500],
-            [6999, 2800],
-        ],
-        "rover": [500, 2700, 100, 0, 800, -90, 0],
+        "ground": (
+            (0, 1000),
+            (300, 1500),
+            (350, 1400),
+            (500, 2000),
+            (800, 1800),
+            (1000, 2500),
+            (1200, 2100),
+            (1500, 2400),
+            (2000, 1000),
+            (2200, 500),
+            (2500, 100),
+            (2900, 800),
+            (3000, 500),
+            (3200, 1000),
+            (3500, 2000),
+            (3800, 800),
+            (4000, 200),
+            (5000, 200),
+            (5500, 1500),
+            (6999, 2800),
+        ),
+        "rover": (500, 2700, 100, 0, 800, -90, 0),
     },
     {
         # Deep canyon
-        "ground": [
-            [0, 1000],
-            [300, 1500],
-            [350, 1400],
-            [500, 2100],
-            [1500, 2100],
-            [2000, 200],
-            [2500, 500],
-            [2900, 300],
-            [3000, 200],
-            [3200, 1000],
-            [3500, 500],
-            [3800, 800],
-            [4000, 200],
-            [4200, 800],
-            [4800, 600],
-            [5000, 1200],
-            [5500, 900],
-            [6000, 500],
-            [6500, 300],
-            [6999, 500],
-        ],
-        "rover": [6500, 2700, -50, 0, 1000, 90, 0],
+        "ground": (
+            (0, 1000),
+            (300, 1500),
+            (350, 1400),
+            (500, 2100),
+            (1500, 2100),
+            (2000, 200),
+            (2500, 500),
+            (2900, 300),
+            (3000, 200),
+            (3200, 1000),
+            (3500, 500),
+            (3800, 800),
+            (4000, 200),
+            (4200, 800),
+            (4800, 600),
+            (5000, 1200),
+            (5500, 900),
+            (6000, 500),
+            (6500, 300),
+            (6999, 500),
+        ),
+        "rover": (6500, 2700, -50, 0, 1000, 90, 0),
     },
-]
+)
 
 
 class MarsLanderEnv(gym.Env):
@@ -126,10 +126,11 @@ class MarsLanderEnv(gym.Env):
     #       current thrust: 0 <= power <= 4
     observation_space = spaces.Dict(
         {
-            "ground": spaces.Box(low=0, high=max(SCENE_WIDTH, SCENE_HEIGHT), shape=(30, 2), dtype=np.float32),
+            "ground": spaces.Box(low=0, high=1, shape=(30, 2), dtype=np.float32),
+            "landing": spaces.Box(low=0, high=1, shape=(2, 2), dtype=np.float32),
             "rover": spaces.Box(
-                low=np.array([0, 0, -500, -500, 0, ROT_MIN, 0]),
-                high=np.array([SCENE_WIDTH, SCENE_HEIGHT, 500, 500, 2000, ROT_MAX, 4]),
+                low=np.array([0, 0, -1, -1, 0, -1, 0]),
+                high=np.array([1, 1, 1, 1, 1, 1, 1]),
                 dtype=np.float32,
             ),
         }
@@ -165,6 +166,7 @@ class MarsLanderEnv(gym.Env):
             self._surface = np.array(ground, dtype=np.float32)
 
     def update_state(self, angle, trust):
+        # print(angle, trust)
         # Update rotation.  Value of the previous turn +/-15°.
         self.rover.angle += np.rint(angle)
         self.rover.angle = np.clip(self.rover.angle, -90, 90)
@@ -189,9 +191,17 @@ class MarsLanderEnv(gym.Env):
 
     def is_landing_successful(self):
         flat_area = self.ground[self.landing_area[0]][0] <= self.rover.x <= self.ground[self.landing_area[1]][0]
-        no_angle = self.rover.angle == 0
-        low_speed = abs(self.rover.vy) < 40 and abs(self.rover.vx) < 20
+        no_angle = int(abs(self.rover.angle)) <= 15
+        low_speed = int(abs(self.rover.vy)) <= 40 and int(abs(self.rover.vx)) <= 20
         return flat_area and no_angle and low_speed
+
+    def format_observation(self):
+        observation = {
+            "ground": self.ground / [self.SCENE_WIDTH, self.SCENE_HEIGHT],
+            "landing": self.ground[self.landing_area] / [self.SCENE_WIDTH, self.SCENE_HEIGHT],
+            "rover": self.rover.numpy() / [self.SCENE_WIDTH, self.SCENE_HEIGHT, 400, 400, 1000, 90, 4],
+        }
+        return observation
 
     def step(self, action):
         self.iter += 1
@@ -209,8 +219,14 @@ class MarsLanderEnv(gym.Env):
 
         if not self.rover.is_within_bounds(width=self.SCENE_WIDTH, height=self.SCENE_HEIGHT):
             done = True
-            reward = -100
-            info = {"Rover is running away!"}
+            reward = -150
+            info = {"msg": "Rover is running away!"}
+            print("********* rover is running away **************")
+        elif self.rover.fuel < 0:
+            done = True
+            reward = -150
+            info = {"msg": "Tank is empty"}
+            print("*********** tank is empty ***************")
         else:
             grounded = is_inside_polygon(self.ground, self.rover.x, self.rover.y, self.SCENE_HEIGHT)
             if grounded:
@@ -218,13 +234,20 @@ class MarsLanderEnv(gym.Env):
 
                 mission_completed = self.is_landing_successful()
                 if not mission_completed:
-                    reward = -100
-                    info = {"Rover has been destroyed"}
+                    flat_area = (
+                        self.ground[self.landing_area[0]][0] <= self.rover.x <= self.ground[self.landing_area[1]][0]
+                    )
+                    no_angle = int(abs(self.rover.angle)) <= 15
+                    low_speed = int(abs(self.rover.vy)) <= 40 and int(abs(self.rover.vx)) <= 20
+                    reward = -50 if flat_area or (no_angle and low_speed) else -100
+                    info = {"msg": "Rover has been destroyed"}
+                    print("************* Rover destroyed *************", reward, flat_area, self.rover)
                 else:
                     reward = self.rover.fuel
-                    info = {"Mission accomplished!"}
-
-        observation = {"ground": self.ground, "rover": self.rover.numpy()}
+                    info = {"msg": "Mission accomplished!"}
+                    print("~~~~~~~~~~~~~~~~~~ WIN ~~~~~~~~~~~~~~~~~~", reward)
+        # print(self.rover)
+        observation = self.format_observation()
         return observation, reward, done, info
 
     def render(self, mode="human", scale=4):
@@ -290,11 +313,12 @@ class MarsLanderEnv(gym.Env):
 
     def reset(self):
         landing_area = [0, 0]
+        self.iter = 0
 
         # Choose between augmented test cases and random generation
         coin = np.random.rand()
 
-        if coin < 0.5:
+        if coin < 0:
             # Generate random map and state
             nb_point = np.random.randint(6, 20)
             ground = np.random.rand(nb_point, 2)
@@ -313,19 +337,22 @@ class MarsLanderEnv(gym.Env):
             while is_inside_polygon(ground, rover.x, rover.y - 100, self.SCENE_HEIGHT):
                 rover = RoverState(self.observation_space["rover"].sample())
 
-            rover.vx = (np.random.rand() - 0.5) * 100 * 2
-            rover.vy = (np.random.rand() - 0.75) * 100
-            rover.power = np.clip(rover.power, 0, 1)
+            rover.vx = 0  # (np.random.rand() - 0.5) * 100 * 2
+            rover.vy = 0  # (np.random.rand() - 0.75) * 100
+            rover.angle = 0
+            rover.power = 0  # np.clip(rover.power, 0, 1)
 
         else:
             # Augment a test case
             test_idx = np.random.randint(len(TEST_CASES_CG))
+            print(test_idx)
             ground = np.array(TEST_CASES_CG[test_idx]["ground"], dtype=np.float32)
             rover = RoverState(TEST_CASES_CG[test_idx]["rover"])
             landing_area = find_flat_segment(ground)
 
             # flip left-right
             if np.random.rand() < 0.5:
+                print("flip left right")
                 ground[:, 0] = self.SCENE_WIDTH - ground[:, 0]
                 ground = ground[::-1]
                 landing_area = [len(ground) - landing_area[0], len(ground) - landing_area[1]]
@@ -335,32 +362,34 @@ class MarsLanderEnv(gym.Env):
                 rover.angle *= -1
 
             # random offset
-            if np.random.rand() < 0.5:
+            if np.random.rand() < 0:
+                print("random offset")
                 magnitude = np.random.rand() * 0.08
                 scale = np.array([self.SCENE_WIDTH, self.SCENE_HEIGHT]) * magnitude
                 ground += np.random.rand(len(ground), 2) * scale
                 ground[landing_area[1], 1] = ground[landing_area[0], 1]
 
             # delete a point
-            if np.random.rand() < 0.5:
+            if np.random.rand() < 0:
+                print("delete point")
                 index = np.random.randint(len(ground))
-                while landing_area[0] <= index <= landing_area[0]:
+                while landing_area[0] <= index <= landing_area[1]:
                     index = np.random.randint(len(ground))
                 ground = np.delete(ground, index, 0)
                 landing_area = find_flat_segment(ground)
 
             # Modify rover sensors
-            rover.x += (np.random.rand() - 0.5) * 150 * 2
-            rover.x = np.clip(rover.x, 0, self.SCENE_WIDTH)
+            # rover.x += (np.random.rand() - 0.5) * 150 * 2
+            # rover.x = np.clip(rover.x, 0, self.SCENE_WIDTH)
 
-            rover.y += (np.random.rand() - 0.5) * 150 * 2
-            rover.y = np.clip(rover.y, 0, self.SCENE_HEIGHT)
+            # rover.y += (np.random.rand() - 0.5) * 150 * 2
+            # rover.y = np.clip(rover.y, 0, self.SCENE_HEIGHT)
 
-            rover.vx += (np.random.rand() - 0.5) * 10
-            rover.vy += (np.random.rand() - 0.75) * 5
+            # rover.vx += (np.random.rand() - 0.5) * 10
+            # rover.vy += (np.random.rand() - 0.75) * 5
 
-            rover.angle += np.random.rand() - 0.5 * 15 * 2
-            rover.angle = np.clip(rover.angle, -90, 90)
+            # rover.angle += np.random.rand() - 0.5 * 15 * 2
+            # rover.angle = np.clip(rover.angle, -90, 90)
 
         # Ensure large landing area
         ground[landing_area[0] + 1, 1] = ground[landing_area[0], 1]
@@ -380,12 +409,16 @@ class MarsLanderEnv(gym.Env):
         self.ground = ground
         self.rover = rover
 
-        return {"ground": self.ground, "rover": self.rover.numpy()}
+        observation = self.format_observation()
+        return observation
 
     def close(self):
         if self.viewer:
             self.viewer.close()
             self.viewer = None
+
+    def __del__(self):
+        self.close()
 
 
 if __name__ == "__main__":
