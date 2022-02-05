@@ -64,7 +64,7 @@ TEST_CASES_CG = (
         "rover": (500, 2700, 100, 0, 800, -90, 0),
     },
     {
-        # Deep canyon
+        # High ground
         "ground": (
             (0, 1000),
             (300, 1500),
@@ -87,7 +87,7 @@ TEST_CASES_CG = (
             (6500, 300),
             (6999, 500),
         ),
-        "rover": (6500, 2700, -50, 0, 1000, 90, 0),
+        "rover": (6500, 2700, -50, 0, 1500, 90, 0),
     },
 )
 
@@ -136,10 +136,11 @@ class MarsLanderEnv(gym.Env):
         }
     )
 
-    def __init__(self, rover=None, ground=None):
+    def __init__(self, rover=None, ground=None, eval=False):
         super().__init__()
         self.iter = -1
         self.viewer = None
+        self.eval = eval
 
         self.rover = None
         if not isinstance(rover, RoverState):
@@ -169,11 +170,11 @@ class MarsLanderEnv(gym.Env):
         # print(angle, trust)
         # Update rotation.  Value of the previous turn +/-15°.
         self.rover.angle += np.rint(angle)
-        self.rover.angle = np.clip(self.rover.angle, -90, 90)
+        self.rover.angle = np.clip(self.rover.angle, self.ROT_MIN, self.ROT_MAX)
 
         # Adjust engine power. Value of the previous turn +/-1.
         self.rover.power += np.rint(trust)
-        self.rover.power = np.clip(self.rover.power, 0, 4)
+        self.rover.power = np.clip(self.rover.power, self.THRUST_MIN, self.THRUST_MAX)
 
         # Tank content. For a thrust power of T, T liters of fuel are consumed.
         self.rover.fuel -= abs(self.rover.power)
@@ -189,17 +190,11 @@ class MarsLanderEnv(gym.Env):
 
         return self.rover.numpy()
 
-    def is_landing_successful(self):
-        flat_area = self.ground[self.landing_area[0]][0] <= self.rover.x <= self.ground[self.landing_area[1]][0]
-        no_angle = int(abs(self.rover.angle)) <= 15
-        low_speed = int(abs(self.rover.vy)) <= 40 and int(abs(self.rover.vx)) <= 20
-        return flat_area and no_angle and low_speed
-
     def format_observation(self):
         observation = {
             "ground": self.ground / [self.SCENE_WIDTH, self.SCENE_HEIGHT],
             "landing": self.ground[self.landing_area] / [self.SCENE_WIDTH, self.SCENE_HEIGHT],
-            "rover": self.rover.numpy() / [self.SCENE_WIDTH, self.SCENE_HEIGHT, 400, 400, 1000, 90, 4],
+            "rover": np.rint(self.rover.numpy()) / [self.SCENE_WIDTH, self.SCENE_HEIGHT, 400, 400, 1000, 90, 4],
         }
         return observation
 
@@ -213,40 +208,34 @@ class MarsLanderEnv(gym.Env):
         assert -1 <= angle <= 1
         assert -1 <= trust <= 1
 
+        prev_angle = self.rover.angle
         angle = np.rint(angle * 15)
         trust = -1 if trust < -1 / 3 else 0 if trust < 1 / 3 else 1
         self.update_state(angle, trust)
 
         if not self.rover.is_within_bounds(width=self.SCENE_WIDTH, height=self.SCENE_HEIGHT):
-            done = True
-            reward = -150
             info = {"msg": "Rover is running away!"}
-            print("********* rover is running away **************")
-        elif self.rover.fuel < 0:
             done = True
             reward = -150
+        elif self.rover.fuel < 0:
             info = {"msg": "Tank is empty"}
-            print("*********** tank is empty ***************")
-        else:
-            grounded = is_inside_polygon(self.ground, self.rover.x, self.rover.y, self.SCENE_HEIGHT)
-            if grounded:
-                done = True
+            done = True
+            reward = -150
+        elif is_inside_polygon(self.ground, self.rover.x, self.rover.y, self.SCENE_HEIGHT):  # touch ground
+            done = True
 
-                mission_completed = self.is_landing_successful()
-                if not mission_completed:
-                    flat_area = (
-                        self.ground[self.landing_area[0]][0] <= self.rover.x <= self.ground[self.landing_area[1]][0]
-                    )
-                    no_angle = int(abs(self.rover.angle)) <= 15
-                    low_speed = int(abs(self.rover.vy)) <= 40 and int(abs(self.rover.vx)) <= 20
-                    reward = -50 if flat_area or (no_angle and low_speed) else -100
-                    info = {"msg": "Rover has been destroyed"}
-                    print("************* Rover destroyed *************", reward, flat_area, self.rover)
-                else:
-                    reward = self.rover.fuel
-                    info = {"msg": "Mission accomplished!"}
-                    print("~~~~~~~~~~~~~~~~~~ WIN ~~~~~~~~~~~~~~~~~~", reward)
-        # print(self.rover)
+            flat_area = self.ground[self.landing_area[0]][0] <= self.rover.x <= self.ground[self.landing_area[1]][0]
+            no_angle = int(abs(prev_angle)) <= 15 and int(abs(self.rover.angle)) <= 15
+            low_speed = int(abs(self.rover.vy)) <= 40 and int(abs(self.rover.vx)) <= 20
+            mission_completed = flat_area and no_angle and low_speed
+
+            if not mission_completed:
+                reward = -50 if flat_area else -75 if (no_angle and low_speed) else -100
+                info = {"msg": "Rover has been destroyed"}
+            else:
+                reward = self.rover.fuel - self.rover.power ** 2
+                info = {"msg": "Mission accomplished!"}
+
         observation = self.format_observation()
         return observation, reward, done, info
 
@@ -286,7 +275,7 @@ class MarsLanderEnv(gym.Env):
         size = 100
         rover = self.viewer.draw_polygon(
             np.array([[-size, -size], [+size, -size], [+size // 2, +size], [-size // 2, +size]], dtype=int),
-            color=(0.9, 0, 0),
+            color=(0.65, 0.6, 0.6),
         )
 
         rover.add_attr(self.rovertrans)
@@ -309,98 +298,32 @@ class MarsLanderEnv(gym.Env):
         self.label.draw()
         self.viewer.onetime_geoms = []
         self.viewer.window.flip()
-        return
+        return  # self.viewer.render(return_rgb_array=mode == "rgb_array")
 
     def reset(self):
-        landing_area = [0, 0]
         self.iter = 0
 
-        # Choose between augmented test cases and random generation
-        coin = np.random.rand()
+        test_idx = np.random.choice(np.arange(len(TEST_CASES_CG)))
+        ground = np.array(TEST_CASES_CG[test_idx]["ground"], dtype=np.float32)
+        rover = RoverState(TEST_CASES_CG[test_idx]["rover"])
 
-        if coin < 0:
-            # Generate random map and state
-            nb_point = np.random.randint(6, 20)
-            ground = np.random.rand(nb_point, 2)
-            ground[:, 0] *= self.SCENE_WIDTH
-            ground[:, 1] *= self.SCENE_HEIGHT * 0.80
-            ground = ground[ground[:, 0].argsort()]
+        # flip left-right
+        if not self.eval and np.random.rand() < 0.5:
+            ground[:, 0] = self.SCENE_WIDTH - ground[:, 0]
+            ground = ground[::-1]
+            rover.x = self.SCENE_WIDTH - rover.x
+            rover.vx *= -1
+            rover.angle *= -1
 
-            # smooth land
-            for i in range(1, nb_point - 1):
-                ground[i, 1] = ground[(i - 1) : (i + 1), 1].sum() / 3
-
-            landing_area[0] = np.random.randint(1, nb_point - 3)
-
-            # Position rover in the air
-            rover = RoverState(self.observation_space["rover"].sample())
-            while is_inside_polygon(ground, rover.x, rover.y - 100, self.SCENE_HEIGHT):
-                rover = RoverState(self.observation_space["rover"].sample())
-
-            rover.vx = 0  # (np.random.rand() - 0.5) * 100 * 2
-            rover.vy = 0  # (np.random.rand() - 0.75) * 100
-            rover.angle = 0
-            rover.power = 0  # np.clip(rover.power, 0, 1)
-
+        if not self.eval:
+            rover.fuel += np.random.rand() * 150
+        rover.y += np.random.rand() * 2 * 50 - 50
+        rover.x += np.random.rand() * 2 * 30 - 30
+        ground[:, 0] += np.random.rand() * 2 * 50 - 50
+        if test_idx != 4:
+            ground[:, 1] -= np.random.rand() * 50
         else:
-            # Augment a test case
-            test_idx = np.random.randint(len(TEST_CASES_CG))
-            print(test_idx)
-            ground = np.array(TEST_CASES_CG[test_idx]["ground"], dtype=np.float32)
-            rover = RoverState(TEST_CASES_CG[test_idx]["rover"])
-            landing_area = find_flat_segment(ground)
-
-            # flip left-right
-            if np.random.rand() < 0.5:
-                print("flip left right")
-                ground[:, 0] = self.SCENE_WIDTH - ground[:, 0]
-                ground = ground[::-1]
-                landing_area = [len(ground) - landing_area[0], len(ground) - landing_area[1]]
-
-                rover.x = self.SCENE_WIDTH - rover.x
-                rover.vx *= -1
-                rover.angle *= -1
-
-            # random offset
-            if np.random.rand() < 0:
-                print("random offset")
-                magnitude = np.random.rand() * 0.08
-                scale = np.array([self.SCENE_WIDTH, self.SCENE_HEIGHT]) * magnitude
-                ground += np.random.rand(len(ground), 2) * scale
-                ground[landing_area[1], 1] = ground[landing_area[0], 1]
-
-            # delete a point
-            if np.random.rand() < 0:
-                print("delete point")
-                index = np.random.randint(len(ground))
-                while landing_area[0] <= index <= landing_area[1]:
-                    index = np.random.randint(len(ground))
-                ground = np.delete(ground, index, 0)
-                landing_area = find_flat_segment(ground)
-
-            # Modify rover sensors
-            # rover.x += (np.random.rand() - 0.5) * 150 * 2
-            # rover.x = np.clip(rover.x, 0, self.SCENE_WIDTH)
-
-            # rover.y += (np.random.rand() - 0.5) * 150 * 2
-            # rover.y = np.clip(rover.y, 0, self.SCENE_HEIGHT)
-
-            # rover.vx += (np.random.rand() - 0.5) * 10
-            # rover.vy += (np.random.rand() - 0.75) * 5
-
-            # rover.angle += np.random.rand() - 0.5 * 15 * 2
-            # rover.angle = np.clip(rover.angle, -90, 90)
-
-        # Ensure large landing area
-        ground[landing_area[0] + 1, 1] = ground[landing_area[0], 1]
-        i = 1
-        while (
-            landing_area[0] + i < len(ground) - 1
-            and ground[landing_area[0] + i, 0] - ground[landing_area[0], 0] <= 1000
-        ):
-            ground[landing_area[0] + i, 1] = ground[landing_area[0], 1]
-            i += 1
-        ground[landing_area[0] + i, 1] = ground[landing_area[0], 1]
+            ground[:, 1] += np.random.rand() * 2 * 50 - 50
 
         ground[:, 0] = np.clip(ground[:, 0], 0, self.SCENE_WIDTH)
         ground[:, 1] = np.clip(ground[:, 1], 0, self.SCENE_HEIGHT)
@@ -424,16 +347,13 @@ class MarsLanderEnv(gym.Env):
 if __name__ == "__main__":
     import time
 
-    from gym.utils.env_checker import check_env
-
     env = MarsLanderEnv()
     env.reset()
-    check_env(env, warn=True, skip_render_check=True)
 
     for i in range(100):
         action = env.action_space.sample()
         state, reward, done, info = env.step(action)
-        env.render()
+        env.render(scale=8)
         if done:
             break
         time.sleep(0.050)
