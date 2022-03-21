@@ -166,14 +166,13 @@ class MarsLanderEnv(gym.Env):
             self.landing_area = find_flat_segment(ground)
             self._surface = np.array(ground, dtype=np.float32)
 
-    def update_state(self, angle, trust):
-        # print(angle, trust)
+    def update_state(self, angle, thrust):
         # Update rotation.  Value of the previous turn +/-15°.
         self.rover.angle += np.rint(angle)
         self.rover.angle = np.clip(self.rover.angle, self.ROT_MIN, self.ROT_MAX)
 
         # Adjust engine power. Value of the previous turn +/-1.
-        self.rover.power += np.rint(trust)
+        self.rover.power += np.rint(thrust)
         self.rover.power = np.clip(self.rover.power, self.THRUST_MIN, self.THRUST_MAX)
 
         # Tank content. For a thrust power of T, T liters of fuel are consumed.
@@ -204,14 +203,14 @@ class MarsLanderEnv(gym.Env):
         reward = 1
         info = {}
 
-        angle, trust = action
+        angle, thrust = action
         assert -1 <= angle <= 1
-        assert -1 <= trust <= 1
+        assert -1 <= thrust <= 1
 
         prev_angle = self.rover.angle
         angle = np.rint(angle * 15)
-        trust = -1 if trust < -1 / 3 else 0 if trust < 1 / 3 else 1
-        self.update_state(angle, trust)
+        thrust = -1 if thrust < -1 / 3 else 0 if thrust < 1 / 3 else 1
+        self.update_state(angle, thrust)
 
         if not self.rover.is_within_bounds(width=self.SCENE_WIDTH, height=self.SCENE_HEIGHT):
             info = {"msg": "Rover is running away!"}
