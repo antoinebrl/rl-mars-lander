@@ -134,4 +134,7 @@ dmypy.json
 # OSX
 .DS_Store
 
+# Project
 logs*/
+exported/
+output/
