@@ -1,8 +1,10 @@
 # Mars Lander with Reinforcement Learning
 
-Environment for landing a rover on Mars.
+Environment for landing a rover on Mars. 
 
 https://user-images.githubusercontent.com/17803473/159241507-2fe92a89-91c3-4f3e-aa34-8d2da1f6e567.mov
+
+Read the game [instructions on CodinGame](https://www.codingame.com/multiplayer/optimization/mars-lander).
 
 A complete write-up of this project is available on my blog:
 [antoinebrl.github.io/blog/rl-mars-lander/](https://antoinebrl.github.io/blog/rl-mars-lander/)
